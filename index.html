@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora JSON</title>
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2ecc71;
+            --dark: #2c3e50;
+            --light: #ecf0f1;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --gray: #95a5a6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .calculator-container {
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .display {
+            padding: 25px 20px;
+            background: var(--dark);
+            color: white;
+            text-align: right;
+            font-size: 2.5rem;
+            font-weight: 300;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        .previous-operation {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 10px;
+            min-height: 1.5rem;
+            word-break: break-all;
+        }
+
+        .current-operation {
+            word-break: break-all;
+            font-weight: 400;
+        }
+
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .btn {
+            border: none;
+            padding: 20px;
+            font-size: 1.3rem;
+            cursor: pointer;
+            background: white;
+            transition: all 0.3s ease;
+            outline: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            font-weight: 500;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-number {
+            background: white;
+            color: var(--dark);
+        }
+
+        .btn-number:hover {
+            background: #f1f1f1;
+        }
+
+        .btn-operator {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-operator:hover {
+            background: #2980b9;
+        }
+
+        .btn-equals {
+            background: var(--secondary);
+            color: white;
+            grid-column: span 2;
+        }
+
+        .btn-equals:hover {
+            background: #27ae60;
+        }
+
+        .btn-clear {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-clear:hover {
+            background: #c0392b;
+        }
+
+        .btn-utility {
+            background: var(--gray);
+            color: white;
+        }
+
+        .btn-utility:hover {
+            background: #7f8c8d;
+        }
+
+        .history-panel {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease;
+            background: white;
+            border-top: 1px solid #eee;
+        }
+
+        .history-panel.active {
+            max-height: 300px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .history-title {
+            font-size: 1.2rem;
+            color: var(--dark);
+            font-weight: bold;
+        }
+
+        .history-controls button {
+            padding: 8px 12px;
+            font-size: 0.9rem;
+            margin-left: 10px;
+            border-radius: 5px;
+        }
+
+        .history-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .history-item:hover {
+            background: #f9f9f9;
+            transform: translateX(5px);
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-item .expression {
+            color: var(--dark);
+            font-weight: bold;
+        }
+
+        .history-item .result {
+            color: var(--primary);
+            float: right;
+            font-weight: 500;
+        }
+
+        @media (max-width: 500px) {
+            .display {
+                padding: 20px 15px;
+                font-size: 2rem;
+                min-height: 100px;
+            }
+            
+            .btn {
+                padding: 15px;
+                font-size: 1.1rem;
+            }
+            
+            .buttons-grid {
+                padding: 15px;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator-container">
+        <div class="display">
+            <div class="previous-operation" id="previous-operation"></div>
+            <div class="current-operation" id="current-operation">0</div>
+        </div>
+        
+        <div class="buttons-grid">
+            <button class="btn btn-clear" onclick="clearDisplay()">C</button>
+            <button class="btn btn-utility" onclick="toggleSign()">±</button>
+            <button class="btn btn-utility" onclick="appendToDisplay('.')">.</button>
+            <button class="btn btn-operator" onclick="setOperation('/')">/</button>
+            
+            <button class="btn btn-number" onclick="appendToDisplay('7')">7</button>
+            <button class="btn btn-number" onclick="appendToDisplay('8')">8</button>
+            <button class="btn btn-number" onclick="appendToDisplay('9')">9</button>
+            <button class="btn btn-operator" onclick="setOperation('*')">×</button>
+            
+            <button class="btn btn-number" onclick="appendToDisplay('4')">4</button>
+            <button class="btn btn-number" onclick="appendToDisplay('5')">5</button>
+            <button class="btn btn-number" onclick="appendToDisplay('6')">6</button>
+            <button class="btn btn-operator" onclick="setOperation('-')">-</button>
+            
+            <button class="btn btn-number" onclick="appendToDisplay('1')">1</button>
+            <button class="btn btn-number" onclick="appendToDisplay('2')">2</button>
+            <button class="btn btn-number" onclick="appendToDisplay('3')">3</button>
+            <button class="btn btn-operator" onclick="setOperation('+')">+</button>
+            
+            <button class="btn btn-number" onclick="appendToDisplay('0')" style="grid-column: span 2;">0</button>
+            <button class="btn btn-equals" onclick="calculate()">=</button>
+        </div>
+        
+        <div class="history-panel" id="history-panel">
+            <div class="history-header">
+                <div class="history-title">Historial</div>
+                <div class="history-controls">
+                    <button class="btn btn-utility" onclick="clearHistory()">Borrar</button>
+                    <button class="btn btn-operator" onclick="toggleHistory()">Cerrar</button>
+                </div>
+            </div>
+            <div id="history-list"></div>
+        </div>
+        
+        <div style="text-align: center; padding: 10px; background: #f8f9fa;">
+            <button class="btn btn-operator" onclick="toggleHistory()" style="width: 100%;">Mostrar Historial</button>
+        </div>
+    </div>
+
+    <script>
+        // Estado de la calculadora (JSON)
+        let calculatorState = {
+            currentInput: "0",
+            previousInput: "",
+            operation: null,
+            resetInput: false,
+            history: []
+        };
+
+        // Elementos del DOM
+        const currentOperationElement = document.getElementById("current-operation");
+        const previousOperationElement = document.getElementById("previous-operation");
+        const historyPanel = document.getElementById("history-panel");
+        const historyList = document.getElementById("history-list");
+
+        // Actualizar el display con el estado actual
+        function updateDisplay() {
+            currentOperationElement.textContent = calculatorState.currentInput;
+            previousOperationElement.textContent = 
+                calculatorState.previousInput + " " + (calculatorState.operation || "");
+        }
+
+        // Guardar el estado en localStorage
+        function saveState() {
+            localStorage.setItem('calculatorState', JSON.stringify(calculatorState));
+        }
+
+        // Cargar el estado desde localStorage
+        function loadState() {
+            const savedState = localStorage.getItem('calculatorState');
+            if (savedState) {
+                calculatorState = JSON.parse(savedState);
+                updateDisplay();
+                updateHistory();
+            }
+        }
+
+        // Actualizar la lista del historial
+        // Arrow function + template string en el historial:
+        function updateHistory() {
+            historyList.innerHTML = '';
+            calculatorState.history.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.innerHTML = `
+                    <span class="expression">${item.expression}</span>
+                    <span class="result">= ${item.result}</span>              
+                `; // ← Template string
+                div.onclick = () => loadFromHistory(index); // ← Arrow function
+                historyList.appendChild(div);
+            });
+            saveState();
+        }
+
+        // Cargar una operación del historial
+        function loadFromHistory(index) {
+            const item = calculatorState.history[index];
+            calculatorState.previousInput = item.result.toString();
+            calculatorState.currentInput = "0";
+            calculatorState.operation = null;
+            calculatorState.resetInput = true;
+            updateDisplay();
+            toggleHistory();
+        }
+
+        // Mostrar/ocultar historial
+        function toggleHistory() {
+            historyPanel.classList.toggle('active');
+        }
+
+        // Limpiar el historial
+        function clearHistory() {
+            calculatorState.history = [];
+            updateHistory();
+        }
+
+        // Añadir al display
+        function appendToDisplay(value) {
+            if (calculatorState.resetInput) {
+                calculatorState.currentInput = "0";
+                calculatorState.resetInput = false;
+            }
+
+            if (value === '.') {
+                if (!calculatorState.currentInput.includes('.')) {
+                    calculatorState.currentInput += '.';
+                }
+            } else {
+                if (calculatorState.currentInput === "0") {
+                    calculatorState.currentInput = value;
+                } else {
+                    calculatorState.currentInput += value;
+                }
+            }
+            
+            updateDisplay();
+        }
+
+        // Cambiar de signo
+        function toggleSign() {
+            if (calculatorState.currentInput.startsWith('-')) {
+                calculatorState.currentInput = calculatorState.currentInput.substring(1);
+            } else {
+                calculatorState.currentInput = '-' + calculatorState.currentInput;
+            }
+            updateDisplay();
+        }
+
+        // Limpiar el display
+        function clearDisplay() {
+            calculatorState.currentInput = "0";
+            calculatorState.previousInput = "";
+            calculatorState.operation = null;
+            updateDisplay();
+        }
+
+        // Hacer la operación
+        function setOperation(op) {
+            if (calculatorState.currentInput === "0" && op === '-') {
+                calculatorState.currentInput = '-';
+                updateDisplay();
+                return;
+            }
+
+            if (calculatorState.currentInput !== "0") {
+                if (calculatorState.previousInput !== "") {
+                    calculate();
+                }
+                calculatorState.previousInput = calculatorState.currentInput;
+                calculatorState.currentInput = "0";
+                calculatorState.operation = op;
+            }
+            updateDisplay();
+        }
+
+        // Calcular resultado
+        function calculate() {
+            if (calculatorState.operation === null || calculatorState.previousInput === "") return;
+
+            let result;
+            const prev = parseFloat(calculatorState.previousInput);
+            const current = parseFloat(calculatorState.currentInput);
+
+            switch (calculatorState.operation) {
+                case '+':
+                    result = prev + current;
+                    break;
+                case '-':
+                    result = prev - current;
+                    break;
+                case '*':
+                    result = prev * current;
+                    break;
+                case '/':
+                    result = prev / current;
+                    break;
+                default:
+                    return;
+            }
+
+            // Guardar en el historial
+            calculatorState.history.unshift({
+                expression: `${calculatorState.previousInput} ${calculatorState.operation} ${calculatorState.currentInput}`,
+                result: result
+            });
+
+            // Actualizar estado
+            calculatorState.currentInput = result.toString();
+            calculatorState.previousInput = "";
+            calculatorState.operation = null;
+            calculatorState.resetInput = true;
+            
+            updateDisplay();
+            updateHistory();
+        }
+
+        // Iniciar
+        loadState();
+    </script>
+</body>
+</html>
